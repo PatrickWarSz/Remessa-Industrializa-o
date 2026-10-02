@@ -1257,8 +1257,9 @@ function Coverage({
               Cobertura fiscal {monthLabel ? `· ${monthLabel}` : "· acumulado"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Tudo que foi vendido nas planilhas importadas x tudo que entrou em nota nos{" "}
-              {cyclesInMonth.length} ciclo(s) já fechados.
+              Vendeu = planilhas importadas · Entrou = notas de balcão já faturadas e
+              distribuídas ({cyclesInMonth.length} ciclo(s)). Notas pendentes só contam depois de
+              fechar o ciclo.
             </p>
           </div>
           <div className="num flex flex-wrap gap-6 text-sm">
