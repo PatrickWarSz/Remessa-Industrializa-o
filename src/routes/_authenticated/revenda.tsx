@@ -136,7 +136,8 @@ function Revenda() {
     [sales, codeMap, referencePeriod, models],
   );
 
-  /** Cobertura fiscal: vendido no mês de referência x entrado nos ciclos daquele mês. */
+  /** Cobertura fiscal: saldo corrido = tudo que entrou em nota − tudo que foi vendido. */
+  const COVERAGE_START = 202608;
   const coverage = useMemo(
     () =>
       resaleCoverage({
@@ -149,7 +150,15 @@ function Revenda() {
         // Acumulado: todo mês importado x todos os ciclos já fechados. As notas do
         // balcão entram com atraso (compro no mês seguinte ao que vendi), então
         // recortar por mês mostrava falta onde a nota já existe.
-        periodIds: periods.filter((p) => sales.some((s) => s.period_id === p.id)).map((p) => p.id),
+        // Saldo corrido a partir de 08/2026: meses de venda anteriores foram cobertos
+        // por notas de antes do programa e ficam fora da conta.
+        periodIds: periods
+          .filter((p) => sales.some((s) => s.period_id === p.id))
+          .filter((p) => {
+            const [m, y] = String((p as { reference_label?: string }).reference_label || p.label).split("/");
+            return Number(y) * 100 + Number(m) >= COVERAGE_START;
+          })
+          .map((p) => p.id),
         monthLabel: null,
         companies,
       }),
@@ -1246,7 +1255,7 @@ function Coverage({
   }
 
   const state = (r: { sold: number; entered: number }) =>
-    r.entered === r.sold ? "ok" : r.entered < r.sold ? `falta ${int(r.sold - r.entered)}` : `sobra ${int(r.entered - r.sold)}`;
+    r.entered === r.sold ? "ok" : r.entered < r.sold ? `pedir ${int(r.sold - r.entered)}` : `estoque ${int(r.entered - r.sold)}`;
 
   return (
     <div className="space-y-6">
@@ -1257,8 +1266,8 @@ function Coverage({
               Cobertura fiscal {monthLabel ? `· ${monthLabel}` : "· acumulado"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Vendeu = planilhas importadas · Entrou = notas de balcão já faturadas e
-              distribuídas ({cyclesInMonth.length} ciclo(s)). Notas pendentes só contam depois de
+              Saldo corrido desde 08/2026: Entrou (notas faturadas) − Vendeu (planilhas). Sobra = estoque; falta = pedir nota. Ciclos:
+              {cyclesInMonth.length}. Notas pendentes só contam depois de
               fechar o ciclo.
             </p>
           </div>
