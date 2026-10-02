@@ -1255,7 +1255,7 @@ function Coverage({
   }
 
   const state = (r: { sold: number; entered: number }) =>
-    r.entered === r.sold ? "ok" : r.entered < r.sold ? `falta ${int(r.sold - r.entered)}` : `sobra ${int(r.entered - r.sold)}`;
+    r.entered === r.sold ? "ok" : r.entered < r.sold ? `pedir ${int(r.sold - r.entered)}` : `estoque ${int(r.entered - r.sold)}`;
 
   return (
     <div className="space-y-6">
@@ -1266,8 +1266,8 @@ function Coverage({
               Cobertura fiscal {monthLabel ? `· ${monthLabel}` : "· acumulado"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Vendeu = planilhas importadas · Entrou = notas de balcão já faturadas e
-              distribuídas ({cyclesInMonth.length} ciclo(s)). Notas pendentes só contam depois de
+              Saldo corrido desde 08/2026: Entrou (notas faturadas) − Vendeu (planilhas). Sobra = estoque; falta = pedir nota. Ciclos:
+              {cyclesInMonth.length}. Notas pendentes só contam depois de
               fechar o ciclo.
             </p>
           </div>
