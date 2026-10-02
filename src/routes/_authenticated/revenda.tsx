@@ -524,7 +524,9 @@ function Rateio({
 
       const need = openBalance(r.modelId, r.size);
       if (need) {
-        for (const [cid, qty] of [...need.entries()].sort((a, b) => b[1] - a[1])) {
+        // Menor falta primeiro: garante que a empresa pequena não fique sem nota
+        // só porque a grande "engoliu" toda a nota.
+        for (const [cid, qty] of [...need.entries()].sort((a, b) => a[1] - b[1])) {
           if (left <= 0) break;
           if (!companies.some((c) => c.id === cid)) continue;
           const take = Math.min(left, qty);
