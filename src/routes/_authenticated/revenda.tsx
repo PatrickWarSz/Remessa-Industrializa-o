@@ -218,6 +218,7 @@ function Revenda() {
             pendingNoteIds={pendingNotes.map((n) => n.id)}
             reference={reference}
             deficit={coverage.deficit}
+            stock={coverage.stock}
             referenceLabel={referencePeriod?.label ?? null}
             onClosed={() =>
               refresh(["counter_notes", "counter_note_items", "resale_cycles", "resale_allocations"])
@@ -460,6 +461,7 @@ function Rateio({
   pendingNoteIds,
   reference,
   deficit,
+  stock,
   referenceLabel,
   onClosed,
 }: {
@@ -468,6 +470,7 @@ function Rateio({
   pendingItems: CounterNoteItem[];
   pendingNoteIds: string[];
   deficit: Map<string, Map<string, number>>;
+  stock: Map<string, Map<string, number>>;
   reference: Map<string, Map<string, number>>;
   referenceLabel: string | null;
   onClosed: () => void;
@@ -536,22 +539,29 @@ function Rateio({
       }
 
       if (left > 0) {
+        // Sobra depois de cobrir as faltas: não empurra mais nota para quem já tem
+        // estoque parado. Cada peça vai para quem tem MENOS estoque em relação ao
+        // que vende (meses de cobertura), equilibrando em vez de engordar uma só.
         const per = reference.get(refKey(r.modelId, r.size)) ?? modelReference.get(r.modelId);
-        const total = per ? [...per.values()].reduce((a, b) => a + b, 0) : 0;
-        if (total) {
-          const remaining = left;
-          const parts = companies.map((c) => {
-            const exact = ((per?.get(c.id) ?? 0) / total) * remaining;
-            return { c, base: Math.floor(exact), rest: exact - Math.floor(exact) };
-          });
-          left = remaining - parts.reduce((a, p) => a + p.base, 0);
-          for (const p of [...parts].sort((a, b) => b.rest - a.rest)) {
-            if (left <= 0) break;
-            p.base += 1;
+        const st = stock.get(refKey(r.modelId, r.size));
+        const cands = companies
+          .map((c) => ({ id: c.id, ref: per?.get(c.id) ?? 0 }))
+          .filter((c) => c.ref > 0);
+        if (cands.length) {
+          const held = new Map(cands.map((c) => [c.id, st?.get(c.id) ?? 0]));
+          while (left > 0) {
+            let best = cands[0]!;
+            let bestLevel = Infinity;
+            for (const c of cands) {
+              const lvl = ((held.get(c.id) ?? 0) + (result.get(c.id) ?? 0) - (need?.get(c.id) ?? 0)) / c.ref;
+              if (lvl < bestLevel) {
+                bestLevel = lvl;
+                best = c;
+              }
+            }
+            result.set(best.id, (result.get(best.id) ?? 0) + 1);
             left -= 1;
           }
-          for (const p of parts)
-            if (p.base > 0) result.set(p.c.id, (result.get(p.c.id) ?? 0) + p.base);
         }
       }
 
