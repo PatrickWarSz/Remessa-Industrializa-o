@@ -247,10 +247,14 @@ export function resaleCoverage(args: {
   );
   const entered = new Map<string, Map<string, number>>();
   for (const a of allocations) {
-    if (!a.model_id || !a.company_id || !cycleIds.has(a.cycle_id)) continue;
-    const k = refKey(a.model_id, a.size);
+    // Se o vínculo com empresa/modelo se perdeu, recupera pelo nome gravado no rateio.
+    const companyId =
+      a.company_id ?? companies.find((c) => norm(c.name) === norm(a.company_name))?.id ?? null;
+    const modelId = a.model_id ?? models.find((m) => norm(m.name) === norm(a.model_name))?.id ?? null;
+    if (!modelId || !companyId || !cycleIds.has(a.cycle_id)) continue;
+    const k = refKey(modelId, a.size);
     const per = entered.get(k) ?? new Map<string, number>();
-    per.set(a.company_id, (per.get(a.company_id) ?? 0) + a.qty);
+    per.set(companyId, (per.get(companyId) ?? 0) + a.qty);
     entered.set(k, per);
   }
 
