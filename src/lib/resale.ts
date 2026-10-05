@@ -257,6 +257,8 @@ export function resaleCoverage(args: {
   const keys = new Set([...sold.keys(), ...entered.keys()]);
   const rows: CoverageRow[] = [];
   const deficit = new Map<string, Map<string, number>>();
+  /** Sobra (entrou − vendeu > 0): estoque fiscal parado por empresa. */
+  const stock = new Map<string, Map<string, number>>();
 
   for (const k of keys) {
     const [modelId = "", size = ""] = k.split("|");
@@ -264,6 +266,7 @@ export function resaleCoverage(args: {
     const soldPer = sold.get(k);
     const enteredPer = entered.get(k);
     const per = new Map<string, number>();
+    const st = new Map<string, number>();
     const ids = new Set([...(soldPer?.keys() ?? []), ...(enteredPer?.keys() ?? [])]);
     for (const cid of ids) {
       const s = soldPer?.get(cid) ?? 0;
@@ -279,8 +282,10 @@ export function resaleCoverage(args: {
         entered: e,
       });
       if (s - e > 0) per.set(cid, s - e);
+      if (e - s > 0) st.set(cid, e - s);
     }
     if (per.size) deficit.set(k, per);
+    if (st.size) stock.set(k, st);
   }
 
   rows.sort((a, b) => {
@@ -294,5 +299,5 @@ export function resaleCoverage(args: {
     return b.sold - a.sold;
   });
 
-  return { rows, deficit };
+  return { rows, deficit, stock };
 }

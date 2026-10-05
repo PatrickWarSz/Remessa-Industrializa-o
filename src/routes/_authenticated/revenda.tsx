@@ -218,6 +218,7 @@ function Revenda() {
             pendingNoteIds={pendingNotes.map((n) => n.id)}
             reference={reference}
             deficit={coverage.deficit}
+            stock={coverage.stock}
             referenceLabel={referencePeriod?.label ?? null}
             onClosed={() =>
               refresh(["counter_notes", "counter_note_items", "resale_cycles", "resale_allocations"])
@@ -460,6 +461,7 @@ function Rateio({
   pendingNoteIds,
   reference,
   deficit,
+  stock,
   referenceLabel,
   onClosed,
 }: {
@@ -468,6 +470,7 @@ function Rateio({
   pendingItems: CounterNoteItem[];
   pendingNoteIds: string[];
   deficit: Map<string, Map<string, number>>;
+  stock: Map<string, Map<string, number>>;
   reference: Map<string, Map<string, number>>;
   referenceLabel: string | null;
   onClosed: () => void;
@@ -536,22 +539,29 @@ function Rateio({
       }
 
       if (left > 0) {
+        // Sobra depois de cobrir as faltas: não empurra mais nota para quem já tem
+        // estoque parado. Cada peça vai para quem tem MENOS estoque em relação ao
+        // que vende (meses de cobertura), equilibrando em vez de engordar uma só.
         const per = reference.get(refKey(r.modelId, r.size)) ?? modelReference.get(r.modelId);
-        const total = per ? [...per.values()].reduce((a, b) => a + b, 0) : 0;
-        if (total) {
-          const remaining = left;
-          const parts = companies.map((c) => {
-            const exact = ((per?.get(c.id) ?? 0) / total) * remaining;
-            return { c, base: Math.floor(exact), rest: exact - Math.floor(exact) };
-          });
-          left = remaining - parts.reduce((a, p) => a + p.base, 0);
-          for (const p of [...parts].sort((a, b) => b.rest - a.rest)) {
-            if (left <= 0) break;
-            p.base += 1;
+        const st = stock.get(refKey(r.modelId, r.size));
+        const cands = companies
+          .map((c) => ({ id: c.id, ref: per?.get(c.id) ?? 0 }))
+          .filter((c) => c.ref > 0);
+        if (cands.length) {
+          const held = new Map(cands.map((c) => [c.id, st?.get(c.id) ?? 0]));
+          while (left > 0) {
+            let best = cands[0]!;
+            let bestLevel = Infinity;
+            for (const c of cands) {
+              const lvl = ((held.get(c.id) ?? 0) + (result.get(c.id) ?? 0) - (need?.get(c.id) ?? 0)) / c.ref;
+              if (lvl < bestLevel) {
+                bestLevel = lvl;
+                best = c;
+              }
+            }
+            result.set(best.id, (result.get(best.id) ?? 0) + 1);
             left -= 1;
           }
-          for (const p of parts)
-            if (p.base > 0) result.set(p.c.id, (result.get(p.c.id) ?? 0) + p.base);
         }
       }
 
@@ -686,6 +696,11 @@ function Rateio({
     }))
     .filter((e) => e.qty > 0);
 
+  const overOrder = rows.reduce((acc, r) => {
+    const need = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
+    return acc + Math.max(0, r.qty - need);
+  }, 0);
+
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
@@ -709,6 +724,8 @@ function Rateio({
             const total = per ? [...per.values()].reduce((a, b) => a + b, 0) : 0;
             const distributed = companies.reduce((a, c) => a + val(key(r.modelId, r.size, c.id)), 0);
             const diff = r.qty - distributed;
+            const needTotal = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
+            const beyond = Math.max(0, r.qty - needTotal);
             return (
               <div key={`${r.modelId}|${r.size}`} className="rounded border border-border p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -718,6 +735,12 @@ function Rateio({
                   <span className="num text-sm text-muted-foreground">
                     pego no balcão: <strong className="text-foreground">{int(r.qty)}</strong>
                   </span>
+                  {beyond > 0 && (
+                    <span className="num text-xs text-muted-foreground">
+                      {needTotal ? `precisava ${int(needTotal)} · ` : "já coberto em estoque · "}
+                      {int(beyond)} a mais vira estoque
+                    </span>
+                  )}
                   <Badge
                     className="ml-auto"
                     variant={diff === 0 ? "default" : "secondary"}
@@ -748,6 +771,9 @@ function Rateio({
                             ? `ref.: ${int(ref)} vendidas (${Math.round((ref / (total || 1)) * 100)}%)`
                             : "sem histórico"}
                           {falta > 0 ? ` · falta ${int(falta)}` : ""}
+                          {(stock.get(refKey(r.modelId, r.size))?.get(c.id) ?? 0) > 0
+                            ? ` · estoque ${int(stock.get(refKey(r.modelId, r.size))?.get(c.id) ?? 0)}`
+                            : ""}
                         </span>
                       </div>
                     );
@@ -758,6 +784,12 @@ function Rateio({
           })}
         </div>
 
+        {overOrder > 0 && (
+          <p className="mb-1 mt-4 text-xs text-muted-foreground">
+            Esta nota tem {int(overOrder)} pç além do que faltava cobrir — no próximo pedido ao
+            fornecedor dá para reduzir esses itens. O excesso foi para quem tem menos estoque.
+          </p>
+        )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button onClick={() => close.mutate()} disabled={close.isPending}>
             Fechar ciclo e gerar mensagem
