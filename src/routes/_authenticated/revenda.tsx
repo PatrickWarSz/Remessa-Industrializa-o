@@ -696,6 +696,11 @@ function Rateio({
     }))
     .filter((e) => e.qty > 0);
 
+  const overOrder = rows.reduce((acc, r) => {
+    const need = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
+    return acc + Math.max(0, r.qty - need);
+  }, 0);
+
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
@@ -719,6 +724,8 @@ function Rateio({
             const total = per ? [...per.values()].reduce((a, b) => a + b, 0) : 0;
             const distributed = companies.reduce((a, c) => a + val(key(r.modelId, r.size, c.id)), 0);
             const diff = r.qty - distributed;
+            const needTotal = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
+            const beyond = Math.max(0, r.qty - needTotal);
             return (
               <div key={`${r.modelId}|${r.size}`} className="rounded border border-border p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -728,6 +735,12 @@ function Rateio({
                   <span className="num text-sm text-muted-foreground">
                     pego no balcão: <strong className="text-foreground">{int(r.qty)}</strong>
                   </span>
+                  {beyond > 0 && (
+                    <span className="num text-xs text-muted-foreground">
+                      {needTotal ? `precisava ${int(needTotal)} · ` : "já coberto em estoque · "}
+                      {int(beyond)} a mais vira estoque
+                    </span>
+                  )}
                   <Badge
                     className="ml-auto"
                     variant={diff === 0 ? "default" : "secondary"}
@@ -758,6 +771,9 @@ function Rateio({
                             ? `ref.: ${int(ref)} vendidas (${Math.round((ref / (total || 1)) * 100)}%)`
                             : "sem histórico"}
                           {falta > 0 ? ` · falta ${int(falta)}` : ""}
+                          {(stock.get(refKey(r.modelId, r.size))?.get(c.id) ?? 0) > 0
+                            ? ` · estoque ${int(stock.get(refKey(r.modelId, r.size))?.get(c.id) ?? 0)}`
+                            : ""}
                         </span>
                       </div>
                     );
@@ -768,6 +784,12 @@ function Rateio({
           })}
         </div>
 
+        {overOrder > 0 && (
+          <p className="mb-1 mt-4 text-xs text-muted-foreground">
+            Esta nota tem {int(overOrder)} pç além do que faltava cobrir — no próximo pedido ao
+            fornecedor dá para reduzir esses itens. O excesso foi para quem tem menos estoque.
+          </p>
+        )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button onClick={() => close.mutate()} disabled={close.isPending}>
             Fechar ciclo e gerar mensagem
