@@ -779,8 +779,8 @@ function Rateio({
           </Button>
           {excess.length > 0 && (
             <span className="num text-xs text-muted-foreground">
-              acima do vendido:{" "}
-              {excess.map((e) => `${e.name} +${int(e.qty)}`).join(" · ")} (vira estoque)
+              acima da necessidade:{" "}
+              {excess.map((e) => `${e.name} +${int(e.qty)}`).join(" · ")} (acima do estoque mínimo)
             </span>
           )}
         </div>
@@ -790,6 +790,9 @@ function Rateio({
     </div>
   );
 }
+
+/** Estoque mínimo (peças) que cada empresa mantém por modelo+tamanho. */
+const MIN_STOCK = 10;
 
 /* -------------------------------- mensagem -------------------------------- */
 
