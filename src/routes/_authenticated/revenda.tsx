@@ -519,54 +519,39 @@ function Rateio({
    * Cobre primeiro quem ainda está com nota atrasada (vendeu mais do que entrou)
    * e só depois distribui o que sobrar pela proporção histórica.
    */
+  /**
+   * Quanto cada empresa realmente precisa de nota: o que vendeu sem nota (falta)
+   * + o que faltar para manter o estoque mínimo. Quem já tem estoque acima do
+   * mínimo não recebe nada.
+   */
+  const targetFor = (modelId: string, size: string) => {
+    const need = openBalance(modelId, size);
+    const st = stock.get(refKey(modelId, size));
+    const per = reference.get(refKey(modelId, size)) ?? modelReference.get(modelId);
+    const out = new Map<string, number>();
+    for (const c of companies) {
+      const falta = need?.get(c.id) ?? 0;
+      const active = falta > 0 || (per?.get(c.id) ?? 0) > 0 || (st?.get(c.id) ?? 0) > 0;
+      if (!active) continue;
+      const t = falta + Math.max(0, MIN_STOCK - (st?.get(c.id) ?? 0));
+      if (t > 0) out.set(c.id, t);
+    }
+    return out;
+  };
+
   const buildSuggestion = () => {
     const next: Record<string, string> = {};
     for (const r of rows) {
-      const result = new Map<string, number>();
       let left = r.qty;
-
-      const need = openBalance(r.modelId, r.size);
-      if (need) {
-        // Menor falta primeiro: garante que a empresa pequena não fique sem nota
-        // só porque a grande "engoliu" toda a nota.
-        for (const [cid, qty] of [...need.entries()].sort((a, b) => a[1] - b[1])) {
-          if (left <= 0) break;
-          if (!companies.some((c) => c.id === cid)) continue;
-          const take = Math.min(left, qty);
-          result.set(cid, (result.get(cid) ?? 0) + take);
-          left -= take;
-        }
+      // Menor necessidade primeiro: a empresa pequena não fica sem nota.
+      const targets = [...targetFor(r.modelId, r.size).entries()].sort((a, b) => a[1] - b[1]);
+      for (const [cid, qty] of targets) {
+        if (left <= 0) break;
+        const take = Math.min(left, qty);
+        next[key(r.modelId, r.size, cid)] = String(take);
+        left -= take;
       }
-
-      if (left > 0) {
-        // Sobra depois de cobrir as faltas: não empurra mais nota para quem já tem
-        // estoque parado. Cada peça vai para quem tem MENOS estoque em relação ao
-        // que vende (meses de cobertura), equilibrando em vez de engordar uma só.
-        const per = reference.get(refKey(r.modelId, r.size)) ?? modelReference.get(r.modelId);
-        const st = stock.get(refKey(r.modelId, r.size));
-        const cands = companies
-          .map((c) => ({ id: c.id, ref: per?.get(c.id) ?? 0 }))
-          .filter((c) => c.ref > 0);
-        if (cands.length) {
-          const held = new Map(cands.map((c) => [c.id, st?.get(c.id) ?? 0]));
-          while (left > 0) {
-            let best = cands[0]!;
-            let bestLevel = Infinity;
-            for (const c of cands) {
-              const lvl = ((held.get(c.id) ?? 0) + (result.get(c.id) ?? 0) - (need?.get(c.id) ?? 0)) / c.ref;
-              if (lvl < bestLevel) {
-                bestLevel = lvl;
-                best = c;
-              }
-            }
-            result.set(best.id, (result.get(best.id) ?? 0) + 1);
-            left -= 1;
-          }
-        }
-      }
-
-      for (const [cid, qty] of result)
-        if (qty > 0) next[key(r.modelId, r.size, cid)] = String(qty);
+      // O que sobrar NÃO é distribuído: não se pede nota do que já está em estoque.
     }
     return next;
   };
@@ -690,14 +675,14 @@ function Rateio({
     .map((c) => ({
       name: c.name,
       qty: rows.reduce((acc, r) => {
-        const falta = openBalance(r.modelId, r.size)?.get(c.id) ?? 0;
+        const falta = targetFor(r.modelId, r.size).get(c.id) ?? 0;
         return acc + Math.max(0, val(key(r.modelId, r.size, c.id)) - falta);
       }, 0),
     }))
     .filter((e) => e.qty > 0);
 
   const overOrder = rows.reduce((acc, r) => {
-    const need = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
+    const need = [...targetFor(r.modelId, r.size).values()].reduce((a, b) => a + b, 0);
     return acc + Math.max(0, r.qty - need);
   }, 0);
 
@@ -724,8 +709,7 @@ function Rateio({
             const total = per ? [...per.values()].reduce((a, b) => a + b, 0) : 0;
             const distributed = companies.reduce((a, c) => a + val(key(r.modelId, r.size, c.id)), 0);
             const diff = r.qty - distributed;
-            const needTotal = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
-            const beyond = Math.max(0, r.qty - needTotal);
+            const needTotal = [...targetFor(r.modelId, r.size).values()].reduce((a, b) => a + b, 0);
             return (
               <div key={`${r.modelId}|${r.size}`} className="rounded border border-border p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -735,12 +719,11 @@ function Rateio({
                   <span className="num text-sm text-muted-foreground">
                     pego no balcão: <strong className="text-foreground">{int(r.qty)}</strong>
                   </span>
-                  {beyond > 0 && (
-                    <span className="num text-xs text-muted-foreground">
-                      {needTotal ? `precisava ${int(needTotal)} · ` : "já coberto em estoque · "}
-                      {int(beyond)} a mais vira estoque
-                    </span>
-                  )}
+                  <span className="num text-xs text-muted-foreground">
+                    {needTotal
+                      ? `precisa de nota: ${int(needTotal)}`
+                      : `já coberto em estoque (mín. ${MIN_STOCK})`}
+                  </span>
                   <Badge
                     className="ml-auto"
                     variant={diff === 0 ? "default" : "secondary"}
@@ -748,7 +731,7 @@ function Rateio({
                     {diff === 0
                       ? "distribuído"
                       : diff > 0
-                        ? `faltam ${int(diff)}`
+                        ? `sem nota: ${int(diff)}`
                         : `sobram ${int(-diff)}`}
                   </Badge>
                 </div>
@@ -786,8 +769,8 @@ function Rateio({
 
         {overOrder > 0 && (
           <p className="mb-1 mt-4 text-xs text-muted-foreground">
-            Esta nota tem {int(overOrder)} pç além do que faltava cobrir — no próximo pedido ao
-            fornecedor dá para reduzir esses itens. O excesso foi para quem tem menos estoque.
+            {int(overOrder)} pç desta nota não precisam de nota fiscal agora (as empresas já têm
+            estoque acima do mínimo de {MIN_STOCK}). Elas ficam fora da mensagem.
           </p>
         )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -796,8 +779,8 @@ function Rateio({
           </Button>
           {excess.length > 0 && (
             <span className="num text-xs text-muted-foreground">
-              acima do vendido:{" "}
-              {excess.map((e) => `${e.name} +${int(e.qty)}`).join(" · ")} (vira estoque)
+              acima da necessidade:{" "}
+              {excess.map((e) => `${e.name} +${int(e.qty)}`).join(" · ")} (acima do estoque mínimo)
             </span>
           )}
         </div>
@@ -807,6 +790,9 @@ function Rateio({
     </div>
   );
 }
+
+/** Estoque mínimo (peças) que cada empresa mantém por modelo+tamanho. */
+const MIN_STOCK = 10;
 
 /* -------------------------------- mensagem -------------------------------- */
 
