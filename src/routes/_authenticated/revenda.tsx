@@ -675,14 +675,14 @@ function Rateio({
     .map((c) => ({
       name: c.name,
       qty: rows.reduce((acc, r) => {
-        const falta = openBalance(r.modelId, r.size)?.get(c.id) ?? 0;
+        const falta = targetFor(r.modelId, r.size).get(c.id) ?? 0;
         return acc + Math.max(0, val(key(r.modelId, r.size, c.id)) - falta);
       }, 0),
     }))
     .filter((e) => e.qty > 0);
 
   const overOrder = rows.reduce((acc, r) => {
-    const need = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
+    const need = [...targetFor(r.modelId, r.size).values()].reduce((a, b) => a + b, 0);
     return acc + Math.max(0, r.qty - need);
   }, 0);
 
@@ -709,8 +709,7 @@ function Rateio({
             const total = per ? [...per.values()].reduce((a, b) => a + b, 0) : 0;
             const distributed = companies.reduce((a, c) => a + val(key(r.modelId, r.size, c.id)), 0);
             const diff = r.qty - distributed;
-            const needTotal = [...(openBalance(r.modelId, r.size)?.values() ?? [])].reduce((a, b) => a + b, 0);
-            const beyond = Math.max(0, r.qty - needTotal);
+            const needTotal = [...targetFor(r.modelId, r.size).values()].reduce((a, b) => a + b, 0);
             return (
               <div key={`${r.modelId}|${r.size}`} className="rounded border border-border p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -720,12 +719,11 @@ function Rateio({
                   <span className="num text-sm text-muted-foreground">
                     pego no balcão: <strong className="text-foreground">{int(r.qty)}</strong>
                   </span>
-                  {beyond > 0 && (
-                    <span className="num text-xs text-muted-foreground">
-                      {needTotal ? `precisava ${int(needTotal)} · ` : "já coberto em estoque · "}
-                      {int(beyond)} a mais vira estoque
-                    </span>
-                  )}
+                  <span className="num text-xs text-muted-foreground">
+                    {needTotal
+                      ? `precisa de nota: ${int(needTotal)}`
+                      : `já coberto em estoque (mín. ${MIN_STOCK})`}
+                  </span>
                   <Badge
                     className="ml-auto"
                     variant={diff === 0 ? "default" : "secondary"}
@@ -733,7 +731,7 @@ function Rateio({
                     {diff === 0
                       ? "distribuído"
                       : diff > 0
-                        ? `faltam ${int(diff)}`
+                        ? `sem nota: ${int(diff)}`
                         : `sobram ${int(-diff)}`}
                   </Badge>
                 </div>
@@ -771,8 +769,8 @@ function Rateio({
 
         {overOrder > 0 && (
           <p className="mb-1 mt-4 text-xs text-muted-foreground">
-            Esta nota tem {int(overOrder)} pç além do que faltava cobrir — no próximo pedido ao
-            fornecedor dá para reduzir esses itens. O excesso foi para quem tem menos estoque.
+            {int(overOrder)} pç desta nota não precisam de nota fiscal agora (as empresas já têm
+            estoque acima do mínimo de {MIN_STOCK}). Elas ficam fora da mensagem.
           </p>
         )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
