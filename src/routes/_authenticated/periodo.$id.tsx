@@ -144,6 +144,8 @@ function PeriodPage() {
               onCommit={(v) => savePeriod.mutate({ fabric_price_per_kg: v ?? 0 })}
             />
           </div>
+        </fieldset>
+        <div className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col items-end gap-1">
             {closed ? (
               <>
