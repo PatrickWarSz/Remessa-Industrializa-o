@@ -519,54 +519,39 @@ function Rateio({
    * Cobre primeiro quem ainda está com nota atrasada (vendeu mais do que entrou)
    * e só depois distribui o que sobrar pela proporção histórica.
    */
+  /**
+   * Quanto cada empresa realmente precisa de nota: o que vendeu sem nota (falta)
+   * + o que faltar para manter o estoque mínimo. Quem já tem estoque acima do
+   * mínimo não recebe nada.
+   */
+  const targetFor = (modelId: string, size: string) => {
+    const need = openBalance(modelId, size);
+    const st = stock.get(refKey(modelId, size));
+    const per = reference.get(refKey(modelId, size)) ?? modelReference.get(modelId);
+    const out = new Map<string, number>();
+    for (const c of companies) {
+      const falta = need?.get(c.id) ?? 0;
+      const active = falta > 0 || (per?.get(c.id) ?? 0) > 0 || (st?.get(c.id) ?? 0) > 0;
+      if (!active) continue;
+      const t = falta + Math.max(0, MIN_STOCK - (st?.get(c.id) ?? 0));
+      if (t > 0) out.set(c.id, t);
+    }
+    return out;
+  };
+
   const buildSuggestion = () => {
     const next: Record<string, string> = {};
     for (const r of rows) {
-      const result = new Map<string, number>();
       let left = r.qty;
-
-      const need = openBalance(r.modelId, r.size);
-      if (need) {
-        // Menor falta primeiro: garante que a empresa pequena não fique sem nota
-        // só porque a grande "engoliu" toda a nota.
-        for (const [cid, qty] of [...need.entries()].sort((a, b) => a[1] - b[1])) {
-          if (left <= 0) break;
-          if (!companies.some((c) => c.id === cid)) continue;
-          const take = Math.min(left, qty);
-          result.set(cid, (result.get(cid) ?? 0) + take);
-          left -= take;
-        }
+      // Menor necessidade primeiro: a empresa pequena não fica sem nota.
+      const targets = [...targetFor(r.modelId, r.size).entries()].sort((a, b) => a[1] - b[1]);
+      for (const [cid, qty] of targets) {
+        if (left <= 0) break;
+        const take = Math.min(left, qty);
+        next[key(r.modelId, r.size, cid)] = String(take);
+        left -= take;
       }
-
-      if (left > 0) {
-        // Sobra depois de cobrir as faltas: não empurra mais nota para quem já tem
-        // estoque parado. Cada peça vai para quem tem MENOS estoque em relação ao
-        // que vende (meses de cobertura), equilibrando em vez de engordar uma só.
-        const per = reference.get(refKey(r.modelId, r.size)) ?? modelReference.get(r.modelId);
-        const st = stock.get(refKey(r.modelId, r.size));
-        const cands = companies
-          .map((c) => ({ id: c.id, ref: per?.get(c.id) ?? 0 }))
-          .filter((c) => c.ref > 0);
-        if (cands.length) {
-          const held = new Map(cands.map((c) => [c.id, st?.get(c.id) ?? 0]));
-          while (left > 0) {
-            let best = cands[0]!;
-            let bestLevel = Infinity;
-            for (const c of cands) {
-              const lvl = ((held.get(c.id) ?? 0) + (result.get(c.id) ?? 0) - (need?.get(c.id) ?? 0)) / c.ref;
-              if (lvl < bestLevel) {
-                bestLevel = lvl;
-                best = c;
-              }
-            }
-            result.set(best.id, (result.get(best.id) ?? 0) + 1);
-            left -= 1;
-          }
-        }
-      }
-
-      for (const [cid, qty] of result)
-        if (qty > 0) next[key(r.modelId, r.size, cid)] = String(qty);
+      // O que sobrar NÃO é distribuído: não se pede nota do que já está em estoque.
     }
     return next;
   };
