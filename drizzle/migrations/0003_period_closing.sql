@@ -1,0 +1,1 @@
+ALTER TABLE public.periods ADD COLUMN IF NOT EXISTS closed_at timestamptz, ADD COLUMN IF NOT EXISTS reopened_at timestamptz;

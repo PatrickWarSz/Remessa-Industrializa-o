@@ -24,6 +24,8 @@ export type Period = {
   reference_label: string;
   fabric_price_per_kg: number;
   created_at: string;
+  closed_at?: string | null;
+  reopened_at?: string | null;
 };
 
 export type FabricMove = {
