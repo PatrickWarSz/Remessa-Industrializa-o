@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Copy, FileSpreadsheet, Plus, Trash2, Upload, Zap } from "lucide-react";
+import { Copy, FileSpreadsheet, Lock, Plus, Trash2, Upload, Zap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -111,6 +111,7 @@ function PeriodPage() {
   if (!period) return <p className="text-sm text-muted-foreground">Carregando…</p>;
 
   const reference = period.reference_label || defaultReference(period.label);
+  const closed = !!period.closed_at;
 
   return (
     <div className="space-y-6">
@@ -122,7 +123,7 @@ function PeriodPage() {
             fechamento com as planilhas de <strong className="text-foreground">{reference}</strong>
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-4">
+        <fieldset disabled={closed} className="flex flex-wrap items-end gap-4">
           <div>
             <label className="text-xs font-semibold uppercase text-muted-foreground">Mês de referência</label>
             <Input
@@ -143,8 +144,56 @@ function PeriodPage() {
               onCommit={(v) => savePeriod.mutate({ fabric_price_per_kg: v ?? 0 })}
             />
           </div>
+          <div className="flex flex-col items-end gap-1">
+            {closed ? (
+              <>
+                <Badge variant="secondary" className="num">
+                  <Lock className="mr-1 size-3" /> Fechado em {new Date(period.closed_at!).toLocaleDateString("pt-BR")}
+                </Badge>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline hover:text-foreground"
+                  onClick={() => {
+                    if (confirm(`Reabrir o mês ${period.label}? As edições voltam a ficar liberadas.`))
+                      savePeriod.mutate(
+                        { closed_at: null, reopened_at: new Date().toISOString() } as Partial<Period>,
+                        { onSuccess: () => toast.success("Mês reaberto") },
+                      );
+                  }}
+                >
+                  reabrir mês
+                </button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const warn = sales.length === 0 ? "\n\nAtenção: nenhuma venda importada neste mês." : "";
+                    if (confirm(`Fechar o mês ${period.label}? Vendas, remessas e valores ficam travados.${warn}`))
+                      savePeriod.mutate({ closed_at: new Date().toISOString() } as Partial<Period>, {
+                        onSuccess: () => toast.success("Mês fechado"),
+                      });
+                  }}
+                >
+                  <Lock className="size-4" /> Fechar mês
+                </Button>
+                {period.reopened_at && (
+                  <span className="num text-xs text-muted-foreground">
+                    reaberto em {new Date(period.reopened_at).toLocaleDateString("pt-BR")}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {closed && (
+        <p className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground">
+          Mês fechado: tudo está só para consulta. Para alterar, use “reabrir mês”.
+        </p>
+      )}
 
       <Tabs defaultValue="vendas">
         <TabsList>
@@ -153,19 +202,21 @@ function PeriodPage() {
           <TabsTrigger value="mensagem">Mensagem</TabsTrigger>
           <TabsTrigger value="estoque">Estoque fiscal</TabsTrigger>
         </TabsList>
-        <TabsContent value="vendas" className="space-y-6 pt-4">
-          <Importer periodId={id} companies={companies} groups={groups} reference={reference} />
-          <SalesTable periodId={id} companies={companies} groups={groups} sales={sales} />
-        </TabsContent>
-        <TabsContent value="remessa" className="pt-4">
-          <Shipments
-            period={period}
-            companies={companies}
-            groups={groups}
-            factories={factories}
-            sales={sales}
-          />
-        </TabsContent>
+        <fieldset disabled={closed} className="min-w-0 disabled:[&_input]:opacity-70">
+          <TabsContent value="vendas" className="space-y-6 pt-4">
+            <Importer periodId={id} companies={companies} groups={groups} reference={reference} />
+            <SalesTable periodId={id} companies={companies} groups={groups} sales={sales} />
+          </TabsContent>
+          <TabsContent value="remessa" className="pt-4">
+            <Shipments
+              period={period}
+              companies={companies}
+              groups={groups}
+              factories={factories}
+              sales={sales}
+            />
+          </TabsContent>
+        </fieldset>
         <TabsContent value="mensagem" className="pt-4">
           <Messages period={period} companies={companies} groups={groups} factories={factories} />
         </TabsContent>

@@ -156,7 +156,12 @@ function Periods() {
                   <CalendarDays className="size-5 text-accent" />
                 </span>
                 <span>
-                  <span className="num block text-lg font-bold">{p.label}</span>
+                  <span className="num block text-lg font-bold">
+                    {p.label}{" "}
+                    <span className="ml-1 align-middle text-xs font-normal text-muted-foreground">
+                      {p.closed_at ? "· fechado" : "· em aberto"}
+                    </span>
+                  </span>
                   <span className="num block text-xs text-muted-foreground">
                     ref. {p.reference_label || defaultReference(p.label)} · tecido{" "}
                     {p.fabric_price_per_kg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/kg
