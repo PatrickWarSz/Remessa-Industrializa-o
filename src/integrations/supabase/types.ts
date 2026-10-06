@@ -214,27 +214,33 @@ export type Database = {
       }
       periods: {
         Row: {
+          closed_at: string | null
           created_at: string
           fabric_price_per_kg: number
           id: string
           label: string
           reference_label: string
+          reopened_at: string | null
           user_id: string | null
         }
         Insert: {
+          closed_at?: string | null
           created_at?: string
           fabric_price_per_kg?: number
           id?: string
           label: string
           reference_label?: string
+          reopened_at?: string | null
           user_id?: string | null
         }
         Update: {
+          closed_at?: string | null
           created_at?: string
           fabric_price_per_kg?: number
           id?: string
           label?: string
           reference_label?: string
+          reopened_at?: string | null
           user_id?: string | null
         }
         Relationships: []

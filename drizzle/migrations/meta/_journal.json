@@ -22,6 +22,13 @@
       "when": 1788870665933,
       "tag": "0002_prevent_duplicate_shipments_allocations",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791287231582,
+      "tag": "0003_period_closing",
+      "breakpoints": true
     }
   ]
 }
