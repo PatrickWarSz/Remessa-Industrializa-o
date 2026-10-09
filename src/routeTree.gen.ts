@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedConfigRouteImport } from './routes/_authenticated/config'
+import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
 import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedRevendaRouteImport } from './routes/_authenticated/revenda'
@@ -35,6 +36,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedConfigRoute = AuthenticatedConfigRouteImport.update({
   id: '/config',
   path: '/config',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContaRoute = AuthenticatedContaRouteImport.update({
+  id: '/conta',
+  path: '/conta',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEstoqueRoute = AuthenticatedEstoqueRouteImport.update({
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/config': typeof AuthenticatedConfigRoute
+  '/conta': typeof AuthenticatedContaRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/revenda': typeof AuthenticatedRevendaRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/config': typeof AuthenticatedConfigRoute
+  '/conta': typeof AuthenticatedContaRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/revenda': typeof AuthenticatedRevendaRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/config': typeof AuthenticatedConfigRoute
+  '/_authenticated/conta': typeof AuthenticatedContaRoute
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRoute
   '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/_authenticated/revenda': typeof AuthenticatedRevendaRoute
@@ -93,6 +102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/config'
+    | '/conta'
     | '/estoque'
     | '/painel'
     | '/revenda'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/config'
+    | '/conta'
     | '/estoque'
     | '/painel'
     | '/revenda'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/config'
+    | '/_authenticated/conta'
     | '/_authenticated/estoque'
     | '/_authenticated/painel'
     | '/_authenticated/revenda'
@@ -153,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConfigRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/conta': {
+      id: '/_authenticated/conta'
+      path: '/conta'
+      fullPath: '/conta'
+      preLoaderRoute: typeof AuthenticatedContaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/estoque': {
       id: '/_authenticated/estoque'
       path: '/estoque'
@@ -186,6 +205,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
+  AuthenticatedContaRoute: typeof AuthenticatedContaRoute
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRoute
   AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
   AuthenticatedRevendaRoute: typeof AuthenticatedRevendaRoute
@@ -195,6 +215,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfigRoute: AuthenticatedConfigRoute,
+  AuthenticatedContaRoute: AuthenticatedContaRoute,
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRoute,
   AuthenticatedPainelRoute: AuthenticatedPainelRoute,
   AuthenticatedRevendaRoute: AuthenticatedRevendaRoute,
