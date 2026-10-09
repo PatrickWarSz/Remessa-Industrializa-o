@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_allowed_users: {
+        Row: {
+          user_id: string
+        }
+        Insert: {
+          user_id: string
+        }
+        Update: {
+          user_id?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           created_at: string
@@ -638,7 +650,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_internal_app: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
