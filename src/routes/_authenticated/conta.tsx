@@ -42,7 +42,7 @@ function Conta() {
       { emailRedirectTo: window.location.origin },
     );
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     if (data.user?.email === email.trim()) {
       setCurrent(data.user.email);
       toast.success("E-mail alterado. Use o novo e-mail no próximo login.");
@@ -54,15 +54,15 @@ function Conta() {
 
   async function changePass(e: React.FormEvent) {
     e.preventDefault();
-    if (pass.length < 6) return toast.error("A senha precisa de pelo menos 6 caracteres.");
-    if (pass !== pass2) return toast.error("As senhas não conferem.");
+    if (pass.length < 6) { toast.error("A senha precisa de pelo menos 6 caracteres."); return; }
+    if (pass !== pass2) { toast.error("As senhas não conferem."); return; }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({
       password: pass,
       ...(curPass ? { current_password: curPass } : {}),
     } as Parameters<typeof supabase.auth.updateUser>[0]);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Senha alterada.");
     setCurPass("");
     setPass("");
