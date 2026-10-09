@@ -79,18 +79,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Central de Remessa e Industrialização" },
+      { title: "Central de Remessa" },
       {
         name: "description",
         content:
           "Importe as planilhas de vendas, consolide por grupo e gere remessas e industrialização por MEI.",
       },
-      { property: "og:title", content: "Central de Remessa e Industrialização" },
+      { property: "og:title", content: "Central de Remessa" },
       {
         property: "og:description",
         content: "Consolide vendas das lojas e gere notas de remessa e industrialização.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Central de Remessa" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -101,7 +102,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png" },
+      { rel: "apple-touch-icon", type: "image/png", sizes: "180x180", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,

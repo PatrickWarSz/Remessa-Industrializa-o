@@ -31,7 +31,7 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
     meta: [
-      { title: "Painel — Remessa, Industrialização e Revenda" },
+      { title: "Painel — Central de Remessa" },
       {
         name: "description",
         content:

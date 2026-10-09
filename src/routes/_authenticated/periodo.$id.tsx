@@ -39,7 +39,7 @@ import { Progress } from "@/components/ui/progress";
 export const Route = createFileRoute("/_authenticated/periodo/$id")({
   head: () => ({
     meta: [
-      { title: "Mês — Vendas, Remessa e Industrialização" },
+      { title: "Mês — Central de Remessa" },
       {
         name: "description",
         content: "Importe as planilhas do mês, confira os totais por grupo e gere remessas por facção.",
