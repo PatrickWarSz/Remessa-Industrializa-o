@@ -41,7 +41,7 @@ import { friendlyError } from "@/lib/dbError";
 export const Route = createFileRoute("/_authenticated/revenda")({
   head: () => ({
     meta: [
-      { title: "Revenda — notas de balcão e rateio entre empresas" },
+      { title: "Revenda — Central de Remessa" },
       {
         name: "description",
         content:

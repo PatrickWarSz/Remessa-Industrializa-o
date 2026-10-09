@@ -29,7 +29,7 @@ import {
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Meses — Central de Remessa e Industrialização" },
+      { title: "Meses — Central de Remessa" },
       {
         name: "description",
         content: "Histórico mensal de vendas, remessas e industrialização das suas lojas.",

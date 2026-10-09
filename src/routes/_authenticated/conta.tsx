@@ -7,7 +7,7 @@ import { AppShell } from "@/components/AppShell";
 export const Route = createFileRoute("/_authenticated/conta")({
   head: () => ({
     meta: [
-      { title: "Minha conta · Remessa" },
+      { title: "Minha conta — Central de Remessa" },
       { name: "description", content: "Trocar e-mail e senha de acesso." },
       { property: "og:title", content: "Minha conta · Remessa" },
       { property: "og:description", content: "Trocar e-mail e senha de acesso." },
