@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  async function signOut() {
+  async function lock() {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -50,18 +50,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <Link
-            to="/conta"
-            className="ml-auto rounded px-3 py-1.5 text-sm transition-colors hover:bg-white/10"
-          >
-            Minha conta
-          </Link>
           <button
             type="button"
-            onClick={signOut}
-            className="flex items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-white/10"
+            onClick={lock}
+            className="ml-auto flex items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-white/10"
           >
-            <LogOut className="size-4" /> Sair
+            <LogOut className="size-4" /> Bloquear
           </button>
         </div>
 

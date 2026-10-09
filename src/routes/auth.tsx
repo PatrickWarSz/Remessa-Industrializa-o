@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Factory } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { unlockApp } from "@/lib/access.functions";
+import { hasInternalAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,15 +12,9 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Central de Remessa" },
-      {
-        name: "description",
-        content: "Acesso interno ao sistema de vendas, remessa e industrialização.",
-      },
-      { property: "og:title", content: "Entrar — Central de Remessa" },
-      { property: "og:description", content: "Acesso interno ao controle de remessa e industrialização." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { title: "Acesso — Central de Remessa" },
+      { name: "description", content: "Acesso interno ao sistema de vendas, remessa e industrialização." },
+      { name: "robots", content: "noindex" },
     ],
   }),
   component: Auth,
@@ -26,39 +22,35 @@ export const Route = createFileRoute("/auth")({
 
 function Auth() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Navegador já liberado antes: entra direto, sem pedir nada.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/", replace: true });
+      if (hasInternalAccess(data.session)) navigate({ to: "/", replace: true });
     });
   }, [navigate]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!password.trim()) return;
     setBusy(true);
     try {
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/", replace: true });
-      } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        if (data.session) {
-          navigate({ to: "/", replace: true });
-        } else {
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          if (signInError) throw signInError;
-          navigate({ to: "/", replace: true });
-        }
+      const res = await unlockApp({ data: { password } });
+      if (!res.ok) {
+        toast.error(res.error);
+        setPassword("");
+        return;
       }
-
+      const { error } = await supabase.auth.setSession({
+        access_token: res.access_token,
+        refresh_token: res.refresh_token,
+      });
+      if (error) throw error;
+      navigate({ to: "/", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível entrar");
+      toast.error(err instanceof Error ? err.message : "Não foi possível liberar o acesso");
     } finally {
       setBusy(false);
     }
@@ -74,45 +66,21 @@ function Auth() {
           <Factory className="size-5 text-accent" />
           <span>REMESSA</span>
         </div>
-        <div>
-          <h1 className="text-xl font-extrabold">
-            {mode === "login" ? "Entrar" : "Criar acesso"}
-          </h1>
-          <p className="text-sm text-muted-foreground">Uso interno. Os dados só abrem depois do login.</p>
-        </div>
         <div className="space-y-2">
-          <Label htmlFor="email">E-mail</Label>
+          <Label htmlFor="access-password">Senha de acesso</Label>
           <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Senha</Label>
-          <Input
-            id="password"
+            id="access-password"
             type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            autoFocus
+            autoComplete="off"
             required
-            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
         <Button type="submit" className="w-full" disabled={busy}>
-          {mode === "login" ? "Entrar" : "Criar conta"}
+          {busy ? "Entrando…" : "Entrar"}
         </Button>
-        <button
-          type="button"
-          className="w-full text-sm text-muted-foreground underline"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-        >
-          {mode === "login" ? "Não tenho acesso ainda" : "Já tenho acesso"}
-        </button>
       </form>
     </main>
   );
