@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Messages } from "@/components/Messages";
 import { FabricStock } from "@/components/FabricStock";
+import { OwnCoverage } from "@/components/OwnCoverage";
 import {
   brl,
   defaultReference,
@@ -203,6 +204,7 @@ function PeriodPage() {
           <TabsTrigger value="remessa">Remessa e industrialização</TabsTrigger>
           <TabsTrigger value="mensagem">Mensagem</TabsTrigger>
           <TabsTrigger value="estoque">Estoque fiscal</TabsTrigger>
+          <TabsTrigger value="cobertura">Cobertura fiscal</TabsTrigger>
         </TabsList>
         <fieldset disabled={closed} className="min-w-0 disabled:[&_input]:opacity-70">
           <TabsContent value="vendas" className="space-y-6 pt-4">
@@ -224,6 +226,9 @@ function PeriodPage() {
         </TabsContent>
         <TabsContent value="estoque" className="pt-4">
           <FabricStock period={period} companies={companies} groups={groups} compact />
+        </TabsContent>
+        <TabsContent value="cobertura" className="pt-4">
+          <OwnCoverage period={period} companies={companies} groups={groups} />
         </TabsContent>
       </Tabs>
     </div>
