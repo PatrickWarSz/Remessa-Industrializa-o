@@ -29,6 +29,7 @@ import {
   refKey,
   resaleCoverage,
   resaleReference,
+  resaleCushion,
   type CounterNote,
   type CounterNoteItem,
   type CoverageRow,
