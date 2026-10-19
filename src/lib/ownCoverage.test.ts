@@ -10,7 +10,7 @@ describe("cobertura da industrialização", () => {
       { key: 202609, sold: { [k]: 100 }, shipped: { [k]: 100 } },
       { key: 202610, sold: { [k]: 100 }, shipped: {} },
     ];
-    const [row] = ownCoverage(months, 202610);
+    const row = ownCoverage(months, 202610)[0]!;
     expect(row.prior).toBe(50);
     expect(row.target).toBe(40);
     expect(row.need).toBe(90);
@@ -22,6 +22,6 @@ describe("cobertura da industrialização", () => {
       { key: 202609, sold: { [k]: 10 }, shipped: { [k]: 500 } },
       { key: 202610, sold: { [k]: 100 }, shipped: {} },
     ];
-    expect(ownCoverage(months, 202610)[0].need).toBe(0);
+    expect(ownCoverage(months, 202610)[0]!.need).toBe(0);
   });
 });
