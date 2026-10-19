@@ -1,3 +1,4 @@
+import { SAFETY_RATIO } from "@/lib/ownCoverage";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +29,7 @@ import {
   refKey,
   resaleCoverage,
   resaleReference,
+  resaleCushion,
   type CounterNote,
   type CounterNoteItem,
   type CoverageRow,
@@ -136,6 +138,17 @@ function Revenda() {
     [sales, codeMap, referencePeriod, models],
   );
 
+  /** Colchão: 40% da média de vendas dos últimos 3 meses importados. */
+  const cushion = useMemo(() => {
+    const withSales = periods
+      .filter((p) => sales.some((s) => s.period_id === p.id))
+      .sort((a, b) => labelValue(b.label) - labelValue(a.label));
+    return resaleCushion(
+      withSales.slice(0, 3).map((p) => resaleReference(sales, codeMap, p.id, models)),
+      SAFETY_RATIO,
+    );
+  }, [periods, sales, codeMap, models]);
+
   /** Cobertura fiscal: saldo corrido = tudo que entrou em nota − tudo que foi vendido. */
   const COVERAGE_START = 202608;
   const coverage = useMemo(
@@ -219,6 +232,7 @@ function Revenda() {
             reference={reference}
             deficit={coverage.deficit}
             stock={coverage.stock}
+            cushion={cushion}
             referenceLabel={referencePeriod?.label ?? null}
             onClosed={() =>
               refresh(["counter_notes", "counter_note_items", "resale_cycles", "resale_allocations"])
@@ -462,9 +476,11 @@ function Rateio({
   reference,
   deficit,
   stock,
+  cushion,
   referenceLabel,
   onClosed,
 }: {
+  cushion: Map<string, Map<string, number>>;
   models: ResaleModel[];
   companies: Company[];
   pendingItems: CounterNoteItem[];
@@ -533,7 +549,7 @@ function Rateio({
       const falta = need?.get(c.id) ?? 0;
       const active = falta > 0 || (per?.get(c.id) ?? 0) > 0 || (st?.get(c.id) ?? 0) > 0;
       if (!active) continue;
-      const t = falta + Math.max(0, MIN_STOCK - (st?.get(c.id) ?? 0));
+      const t = falta + Math.max(0, (cushion.get(refKey(modelId, size))?.get(c.id) ?? 0) - (st?.get(c.id) ?? 0));
       if (t > 0) out.set(c.id, t);
     }
     return out;
@@ -722,7 +738,7 @@ function Rateio({
                   <span className="num text-xs text-muted-foreground">
                     {needTotal
                       ? `precisa de nota: ${int(needTotal)}`
-                      : `já coberto em estoque (mín. ${MIN_STOCK})`}
+                      : "já coberto em estoque (colchão de 40% da média de 3 meses)"}
                   </span>
                   <Badge
                     className="ml-auto"
@@ -770,7 +786,7 @@ function Rateio({
         {overOrder > 0 && (
           <p className="mb-1 mt-4 text-xs text-muted-foreground">
             {int(overOrder)} pç desta nota não precisam de nota fiscal agora (as empresas já têm
-            estoque acima do mínimo de {MIN_STOCK}). Elas ficam fora da mensagem.
+            estoque acima do colchão de 40% da média de 3 meses). Elas ficam fora da mensagem.
           </p>
         )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -792,7 +808,6 @@ function Rateio({
 }
 
 /** Estoque mínimo (peças) que cada empresa mantém por modelo+tamanho. */
-const MIN_STOCK = 10;
 
 /* -------------------------------- mensagem -------------------------------- */
 
