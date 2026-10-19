@@ -305,3 +305,27 @@ export function resaleCoverage(args: {
 
   return { rows, deficit, stock };
 }
+
+/* ------------------------- colchão de estoque fiscal ------------------------ */
+
+/**
+ * Colchão por modelo+tamanho e empresa: SAFETY_RATIO × média de vendas dos
+ * últimos 3 meses importados (mesma regra da industrialização), sempre para cima.
+ */
+export function resaleCushion(
+  monthly: Array<Map<string, Map<string, number>>>,
+  ratio: number,
+) {
+  const last = monthly.slice(0, 3);
+  const out = new Map<string, Map<string, number>>();
+  if (!last.length) return out;
+  for (const m of last)
+    for (const [k, per] of m) {
+      const acc = out.get(k) ?? new Map<string, number>();
+      for (const [cid, q] of per) acc.set(cid, (acc.get(cid) ?? 0) + q);
+      out.set(k, acc);
+    }
+  for (const per of out.values())
+    for (const [cid, sum] of per) per.set(cid, Math.ceil((sum / last.length) * ratio));
+  return out;
+}
