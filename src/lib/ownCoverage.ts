@@ -39,7 +39,7 @@ export function ownCoverage(months: OwnMonth[], currentKey: number, start = OWN_
 
   const rows: OwnCoverageRow[] = [];
   for (const k of keys) {
-    const [companyId, group] = k.split("|");
+    const [companyId = "", group = ""] = k.split("|");
     let prior = 0;
     for (const m of ordered) if (m.key < currentKey) prior += (m.shipped[k] ?? 0) - (m.sold[k] ?? 0);
     const sold = current?.sold[k] ?? 0;
