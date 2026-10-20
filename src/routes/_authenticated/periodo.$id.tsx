@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Messages } from "@/components/Messages";
 import { FabricStock } from "@/components/FabricStock";
-import { OwnCoverage } from "@/components/OwnCoverage";
+import { OwnCoverage, useOwnCoverageRows } from "@/components/OwnCoverage";
 import {
   brl,
   defaultReference,
@@ -683,6 +683,49 @@ function Shipments({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const { rows: coverage } = useOwnCoverageRows(period, groups);
+
+  const byCoverage = useMutation({
+    mutationFn: async () => {
+      const need = new Map(coverage.map((r) => [`${r.companyId}|${r.group}`, r.need]));
+      let changed = 0;
+      for (const sh of shipments.filter((x) => !x.is_extra && x.company_id)) {
+        const own = items.filter((i) => i.shipment_id === sh.id);
+        for (const i of own) {
+          const q = need.get(`${sh.company_id}|${norm(i.group_name)}`) ?? 0;
+          if (q === i.qty) continue;
+          const { error } = await supabase.from("shipment_items").update({ qty: q }).eq("id", i.id);
+          if (error) throw error;
+          changed++;
+        }
+        const have = new Set(own.map((i) => norm(i.group_name)));
+        let order = own.length;
+        for (const r of coverage) {
+          if (r.companyId !== sh.company_id || r.need <= 0 || have.has(r.group)) continue;
+          const g = groups.find((x) => norm(x.name) === r.group);
+          if (!g) continue;
+          const { error } = await supabase.from("shipment_items").insert({
+            shipment_id: sh.id,
+            group_name: g.name,
+            qty: r.need,
+            yield_per_kg: g.yield_per_kg ?? null,
+            unit_price: g.unit_price ?? null,
+            sort_order: ++order,
+          });
+          if (error && !isDuplicate(error)) throw error;
+          changed++;
+        }
+      }
+      return changed;
+    },
+    onSuccess: (n) => {
+      toast.success(n ? `${n} item(ns) ajustado(s) pela cobertura fiscal` : "Remessas já batem com a cobertura");
+      refresh();
+      qc.invalidateQueries({ queryKey: ["own_coverage"] });
+    },
+    onError: (e: Error) => toast.error(friendlyError(e)),
+  });
+
   const valueOf = (shipmentId: string) =>
     sumTotals(items.filter((i) => i.shipment_id === shipmentId).map((i) => computeItem(i, groups)));
 
@@ -691,6 +734,20 @@ function Shipments({
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => generate.mutate()} disabled={generate.isPending}>
           <Zap className="size-4" /> Gerar remessas do mês
+        </Button>
+        <Button
+          variant="outline"
+          disabled={byCoverage.isPending || !shipments.some((x) => !x.is_extra)}
+          onClick={() => {
+            if (
+              confirm(
+                "Ajustar as remessas pela cobertura fiscal?\n\nCada grupo passa a ter só o necessário: vendas do mês + reserva de 40% da média de 3 meses − o que já tem em estoque. Itens com estoque suficiente ficam com 0. Depois use “Arredondar”.",
+              )
+            )
+              byCoverage.mutate();
+          }}
+        >
+          Ajustar pela cobertura fiscal
         </Button>
         <Button variant="secondary" onClick={() => addExtra.mutate()}>
           <Plus className="size-4" /> Remessa avulsa
