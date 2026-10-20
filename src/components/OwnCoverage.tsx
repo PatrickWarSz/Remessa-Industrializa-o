@@ -72,8 +72,8 @@ export function OwnCoverage({
   const sorted = [...rows].sort(
     (a, b) => companyName(a.companyId).localeCompare(companyName(b.companyId)) || a.group.localeCompare(b.group),
   );
-  const faltas = rows.filter((r) => r.status === "falta");
-  const totalNeed = rows.reduce((s, r) => s + r.need, 0);
+  const faltas = rows.filter((r) => r.after < 0);
+  const totalSold = rows.reduce((s, r) => s + r.sold, 0);
   const totalShip = rows.reduce((s, r) => s + r.shipped, 0);
 
   if (!data) return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -81,49 +81,51 @@ export function OwnCoverage({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card title="Mínimo a industrializar" value={`${int(totalNeed)} pç`} />
-        <Card title="Remetido neste mês" value={`${int(totalShip)} pç`} />
-        <Card title="Itens sem cobertura" value={String(faltas.length)} danger={faltas.length > 0} />
+        <Card title="Vendas a cobrir" value={`${int(totalSold)} pç`} />
+        <Card title="Remetido no mês" value={`${int(totalShip)} pç`} />
+        <Card
+          title="Situação fiscal"
+          value={faltas.length ? `${faltas.length} item(ns) faltando` : "100% coberto"}
+          danger={faltas.length > 0}
+        />
       </div>
       {faltas.length > 0 && (
         <p className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-          Atenção: {faltas.map((f) => `${companyName(f.companyId)} ${groupBy(f.group)?.name ?? f.group} (faltam ${int(-f.after)})`).join(" · ")}.
+          Faltam peças: {faltas.map((f) => `${companyName(f.companyId)} ${groupBy(f.group)?.name ?? f.group} (${int(-f.after)})`).join(" · ")}.
           Sem remessa suficiente, essas vendas ficam sem nota de industrialização.
         </p>
       )}
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Empresa</TableHead>
-            <TableHead>Grupo</TableHead>
-            <TableHead className="text-right">Saldo anterior</TableHead>
+            <TableHead>Empresa · Grupo</TableHead>
             <TableHead className="text-right">Vendeu</TableHead>
-            <TableHead className="text-right">Média 3m</TableHead>
-            <TableHead className="text-right">Colchão</TableHead>
-            <TableHead className="text-right">Pedir mín.</TableHead>
-            <TableHead className="text-right">Tecido (kg)</TableHead>
             <TableHead className="text-right">Remetido</TableHead>
-            <TableHead className="text-right">Saldo final</TableHead>
+            <TableHead className="text-right">Saldo</TableHead>
             <TableHead>Situação</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sorted.map((r) => {
-            const y = groupBy(r.group)?.yield_per_kg;
+            const falta = r.after < 0;
+            const extra = Math.max(0, r.target - r.after);
             return (
               <TableRow key={`${r.companyId}|${r.group}`}>
-                <TableCell>{companyName(r.companyId)}</TableCell>
-                <TableCell>{groupBy(r.group)?.name ?? r.group}</TableCell>
-                <TableCell className="num text-right">{int(r.prior)}</TableCell>
-                <TableCell className="num text-right">{int(r.sold)}</TableCell>
-                <TableCell className="num text-right">{int(Math.round(r.avg3))}</TableCell>
-                <TableCell className="num text-right">{int(r.target)}</TableCell>
-                <TableCell className="num text-right font-semibold">{int(r.need)}</TableCell>
-                <TableCell className="num text-right">{y ? kgNum(Math.ceil(r.need / y)) : "—"}</TableCell>
-                <TableCell className="num text-right">{int(r.shipped)}</TableCell>
-                <TableCell className="num text-right">{int(r.after)}</TableCell>
                 <TableCell>
-                  <Badge className={STATUS[r.status].cls}>{STATUS[r.status].label}</Badge>
+                  {companyName(r.companyId)} · {groupBy(r.group)?.name ?? r.group}
+                </TableCell>
+                <TableCell className="num text-right">{int(r.sold)}</TableCell>
+                <TableCell className="num text-right">{int(r.shipped)}</TableCell>
+                <TableCell className={`num text-right font-semibold ${falta ? "text-destructive" : ""}`}>{int(r.after)}</TableCell>
+                <TableCell>
+                  {falta ? (
+                    <Badge className="bg-destructive text-destructive-foreground">faltam {int(-r.after)}</Badge>
+                  ) : (
+                    <Badge className="bg-primary text-primary-foreground">coberto</Badge>
+                  )}
+                  {!falta && extra > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground">reserva sugerida +{int(extra)}</span>
+                  )}
                 </TableCell>
               </TableRow>
             );
@@ -131,9 +133,9 @@ export function OwnCoverage({
         </TableBody>
       </Table>
       <p className="text-xs text-muted-foreground">
-        Vendeu = planilhas importadas · Remetido = peças das remessas com empresa definida · Colchão ={" "}
-        {Math.round(SAFETY_RATIO * 100)}% da média dos últimos 3 meses · Pedir mín. = vendas + colchão − saldo anterior
-        (sempre para cima). Conta a partir de {String(OWN_COVERAGE_START).slice(4)}/{String(OWN_COVERAGE_START).slice(0, 4)}.
+        Saldo = saldo anterior + remetido − vendido. Só fica vermelho se faltar peça para cobrir venda real. A reserva
+        sugerida ({Math.round(SAFETY_RATIO * 100)}% da média de 3 meses) é opcional. Conta a partir de{" "}
+        {String(OWN_COVERAGE_START).slice(4)}/{String(OWN_COVERAGE_START).slice(0, 4)}.
       </p>
     </div>
   );
