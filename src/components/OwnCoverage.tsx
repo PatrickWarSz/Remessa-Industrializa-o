@@ -14,15 +14,7 @@ const STATUS = {
   excesso: { label: "estoque alto", cls: "bg-secondary text-secondary-foreground" },
 };
 
-export function OwnCoverage({
-  period,
-  companies,
-  groups,
-}: {
-  period: Period;
-  companies: Company[];
-  groups: ProductGroup[];
-}) {
+export function useOwnCoverageRows(period: Period, groups: ProductGroup[]) {
   const { data } = useQuery({
     queryKey: ["own_coverage"],
     queryFn: async () => {
@@ -66,6 +58,20 @@ export function OwnCoverage({
     return ownCoverage([...months.values()], labelKey(period.label));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, period.label, groups]);
+
+  return { data, rows };
+}
+
+export function OwnCoverage({
+  period,
+  companies,
+  groups,
+}: {
+  period: Period;
+  companies: Company[];
+  groups: ProductGroup[];
+}) {
+  const { data, rows } = useOwnCoverageRows(period, groups);
 
   const groupBy = (g: string) => groups.find((x) => norm(x.name) === g);
   const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? "—";
