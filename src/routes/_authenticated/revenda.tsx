@@ -558,16 +558,11 @@ function Rateio({
   const buildSuggestion = () => {
     const next: Record<string, string> = {};
     for (const r of rows) {
-      let left = r.qty;
-      // Menor necessidade primeiro: a empresa pequena não fica sem nota.
-      const targets = [...targetFor(r.modelId, r.size).entries()].sort((a, b) => a[1] - b[1]);
-      for (const [cid, qty] of targets) {
-        if (left <= 0) break;
-        const take = Math.min(left, qty);
-        next[key(r.modelId, r.size, cid)] = String(take);
-        left -= take;
-      }
-      // O que sobrar NÃO é distribuído: não se pede nota do que já está em estoque.
+      // Peso da sobra: vendas do tamanho; senão do modelo; senão quem tem histórico.
+      const weights = reference.get(refKey(r.modelId, r.size)) ?? modelReference.get(r.modelId) ?? new Map();
+      let res = allocateNote(r.qty, targetFor(r.modelId, r.size), weights);
+      if (!res.size && companies[0]) res = new Map([[companies[0].id, r.qty]]);
+      for (const [cid, q] of res) next[key(r.modelId, r.size, cid)] = String(q);
     }
     return next;
   };
