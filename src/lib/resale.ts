@@ -329,3 +329,43 @@ export function resaleCushion(
     for (const [cid, sum] of per) per.set(cid, Math.ceil((sum / last.length) * ratio));
   return out;
 }
+
+/* --------------------------- rateio da nota (100%) -------------------------- */
+
+/**
+ * Distribui TODAS as peças da nota de balcão entre as empresas:
+ * 1) cobre a necessidade (falta + reserva), menor necessidade primeiro;
+ * 2) a sobra vai pela proporção de vendas (`weights`), maiores restos.
+ * Soma do resultado = qty, sempre (nenhuma peça comprada some do controle).
+ */
+export function allocateNote(
+  qty: number,
+  targets: Map<string, number>,
+  weights: Map<string, number>,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  let left = Math.max(0, Math.floor(qty));
+  for (const [cid, need] of [...targets.entries()].sort((a, b) => a[1] - b[1])) {
+    if (left <= 0) break;
+    const take = Math.min(left, Math.max(0, need));
+    if (take) out.set(cid, take);
+    left -= take;
+  }
+  if (left <= 0) return out;
+  let w = [...weights.entries()].filter(([, v]) => v > 0);
+  if (!w.length) w = [...targets.entries()].filter(([, v]) => v > 0);
+  if (!w.length) return out; // sem nenhuma referência: quem chamou decide
+  const total = w.reduce((a, [, v]) => a + v, 0);
+  const parts = w.map(([cid, v]) => {
+    const exact = (left * v) / total;
+    return { cid, base: Math.floor(exact), rest: exact - Math.floor(exact), v };
+  });
+  let rem = left - parts.reduce((a, p) => a + p.base, 0);
+  parts.sort((a, b) => b.rest - a.rest || b.v - a.v);
+  for (const p of parts) {
+    const add = p.base + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem--;
+    if (add) out.set(p.cid, (out.get(p.cid) ?? 0) + add);
+  }
+  return out;
+}
