@@ -747,7 +747,7 @@ function Rateio({
                     {diff === 0
                       ? "distribuído"
                       : diff > 0
-                        ? `sem nota: ${int(diff)}`
+                        ? `coberto pelo estoque: ${int(diff)}`
                         : `sobram ${int(-diff)}`}
                   </Badge>
                 </div>
