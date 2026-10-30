@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { int, shiftLabel, type Company, type Period } from "@/lib/domain";
 import {
   ALL_SIZES,
+  allocateNote,
   fetchAllocations,
   fetchCodeMap,
   fetchCycles,
