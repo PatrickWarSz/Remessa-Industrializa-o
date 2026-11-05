@@ -369,3 +369,20 @@ export function allocateNote(
   }
   return out;
 }
+
+/**
+ * Rateio enxuto (cobertura fiscal): só entra na nota o que cada empresa
+ * precisa (falta + reserva), menor necessidade primeiro, limitado ao que foi
+ * pego no balcão. O resto fica como saldo pendente para os próximos ciclos.
+ */
+export function allocateNeed(qty: number, targets: Map<string, number>): Map<string, number> {
+  const out = new Map<string, number>();
+  let left = Math.max(0, Math.floor(qty));
+  for (const [cid, need] of [...targets.entries()].sort((a, b) => a[1] - b[1])) {
+    if (left <= 0) break;
+    const take = Math.min(left, Math.max(0, Math.ceil(need)));
+    if (take) out.set(cid, take);
+    left -= take;
+  }
+  return out;
+}

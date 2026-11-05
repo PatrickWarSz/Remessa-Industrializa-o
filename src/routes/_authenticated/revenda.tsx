@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { int, shiftLabel, type Company, type Period } from "@/lib/domain";
 import {
   ALL_SIZES,
+  allocateNeed,
   allocateNote,
   fetchAllocations,
   fetchCodeMap,
@@ -556,9 +557,14 @@ function Rateio({
     return out;
   };
 
-  const buildSuggestion = () => {
+  const buildSuggestion = (mode: "need" | "full" = "need") => {
     const next: Record<string, string> = {};
     for (const r of rows) {
+      if (mode === "need") {
+        for (const [cid, q] of allocateNeed(r.qty, targetFor(r.modelId, r.size)))
+          next[key(r.modelId, r.size, cid)] = String(q);
+        continue;
+      }
       // Peso da sobra: vendas do tamanho; senão do modelo; senão quem tem histórico.
       const weights = reference.get(refKey(r.modelId, r.size)) ?? modelReference.get(r.modelId) ?? new Map();
       let res = allocateNote(r.qty, targetFor(r.modelId, r.size), weights);
@@ -568,9 +574,13 @@ function Rateio({
     return next;
   };
 
-  const suggest = () => {
-    setAlloc(buildSuggestion());
-    toast.success("Sugestão preenchida pelo saldo em aberto");
+  const suggest = (mode: "need" | "full") => {
+    setAlloc(buildSuggestion(mode));
+    toast.success(
+      mode === "need"
+        ? "Preenchido só com o necessário — o resto fica guardado no balcão"
+        : "Nota cheia distribuída — tudo vira estoque fiscal",
+    );
   };
 
   /** Preenche sozinho assim que houver notas pendentes e referência disponível. */
@@ -602,6 +612,16 @@ function Rateio({
           })),
       );
       if (!payload.length) throw new Error("Distribua ao menos uma peça antes de fechar");
+      const leftovers = rows
+        .map((r) => ({
+          r,
+          left: r.qty - companies.reduce((a, c) => a + val(key(r.modelId, r.size, c.id)), 0),
+        }));
+      const over = leftovers.find((x) => x.left < 0);
+      if (over)
+        throw new Error(
+          `${models.find((m) => m.id === over.r.modelId)?.name ?? ""} ${over.r.size}: distribuiu ${-over.left} a mais do que foi pego no balcão`,
+        );
       const today = new Date();
       const { data, error } = await supabase
         .from("resale_cycles")
@@ -644,6 +664,35 @@ function Rateio({
           .eq("cycle_id", data.id);
         await supabase.from("resale_cycles").delete().eq("id", data.id);
         throw allocError;
+      }
+
+      // O que não entrou na nota agora continua no balcão como saldo pendente.
+      const rest = leftovers.filter((x) => x.left > 0);
+      if (rest.length) {
+        const { data: saldo, error: saldoErr } = await supabase
+          .from("counter_notes")
+          .insert({
+            note_date: today.toISOString().slice(0, 10),
+            supplier: "SALDO DO BALCÃO",
+            doc: `saldo ${today.toLocaleDateString("pt-BR")}`,
+            status: "pendente",
+          })
+          .select("id")
+          .single();
+        if (saldoErr) throw saldoErr;
+        const { error: itemsErr } = await supabase.from("counter_note_items").insert(
+          rest.map((x, i) => ({
+            note_id: saldo.id,
+            model_id: x.r.modelId,
+            size: x.r.size,
+            qty: x.left,
+            sort_order: i,
+          })),
+        );
+        if (itemsErr) {
+          await supabase.from("counter_notes").delete().eq("id", saldo.id);
+          throw itemsErr;
+        }
       }
     },
     onSuccess: () => {
@@ -710,9 +759,14 @@ function Rateio({
               Você digita o número real.
             </p>
           </div>
-          <Button variant="secondary" onClick={suggest}>
-            <Wand2 className="size-4" /> Sugerir pelo saldo em aberto
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => suggest("need")}>
+              <Wand2 className="size-4" /> Só o necessário (menos imposto)
+            </Button>
+            <Button variant="outline" onClick={() => suggest("full")}>
+              Nota cheia (tudo para estoque)
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -743,7 +797,7 @@ function Rateio({
                     {diff === 0
                       ? "distribuído"
                       : diff > 0
-                        ? `coberto pelo estoque: ${int(diff)}`
+                        ? `fica no balcão: ${int(diff)}`
                         : `sobram ${int(-diff)}`}
                   </Badge>
                 </div>
@@ -781,8 +835,9 @@ function Rateio({
 
         {overOrder > 0 && (
           <p className="mb-1 mt-4 text-xs text-muted-foreground">
-            {int(overOrder)} pç desta nota não precisam de nota fiscal agora (as empresas já têm
-            estoque acima do colchão de 40% da média de 3 meses). Elas ficam fora da mensagem.
+            {int(overOrder)} pç não precisam de nota agora (as empresas já têm estoque acima da
+            reserva de 40% da média de 3 meses). Se ficarem fora da mensagem, voltam como
+            "SALDO DO BALCÃO" pendente e entram nos próximos ciclos quando houver necessidade.
           </p>
         )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
