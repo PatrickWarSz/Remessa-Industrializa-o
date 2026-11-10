@@ -136,6 +136,60 @@ export type Database = {
           },
         ]
       }
+      cuts: {
+        Row: {
+          color: string
+          created_at: string
+          cut_number: string
+          cut_on: string
+          fabric: string
+          file_name: string
+          file_path: string | null
+          group_name: string
+          id: string
+          model_label: string
+          note: string
+          qty_g: number
+          qty_gg: number
+          qty_m: number
+          qty_p: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          cut_number?: string
+          cut_on?: string
+          fabric?: string
+          file_name?: string
+          file_path?: string | null
+          group_name?: string
+          id?: string
+          model_label?: string
+          note?: string
+          qty_g?: number
+          qty_gg?: number
+          qty_m?: number
+          qty_p?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          cut_number?: string
+          cut_on?: string
+          fabric?: string
+          file_name?: string
+          file_path?: string | null
+          group_name?: string
+          id?: string
+          model_label?: string
+          note?: string
+          qty_g?: number
+          qty_gg?: number
+          qty_m?: number
+          qty_p?: number
+        }
+        Relationships: []
+      }
       fabric_moves: {
         Row: {
           company_id: string
