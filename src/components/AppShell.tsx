@@ -22,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: "/painel", label: "Painel" },
     { to: "/", label: "Meses" },
     { to: "/config", label: "Cadastros" },
+    { to: "/cortes", label: "Cortes" },
     { to: "/revenda", label: "Revenda" },
     { to: "/estoque", label: "Estoque fiscal" },
   ];
