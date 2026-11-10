@@ -76,7 +76,7 @@ async function signedUrl(path: string) {
 
 function printMirror(c: Cut) {
   const w = window.open("", "_blank");
-  if (!w) return toast.error("Libere as janelas pop-up para imprimir.");
+  if (!w) { toast.error("Libere as janelas pop-up para imprimir."); return; }
   const cells = SIZES.map(([k, l]) => `<td><b>${l}</b><br>${c[k]}</td>`).join("");
   w.document.write(`<html><head><title>Espelho do corte ${c.cut_number}</title><style>
     body{font-family:Arial,sans-serif;padding:32px;color:#222}h1{margin:0 0 4px}

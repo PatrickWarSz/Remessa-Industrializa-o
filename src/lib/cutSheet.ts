@@ -15,22 +15,22 @@ export function parseCutText(text: string): Partial<ParsedCut> {
   const t = text.replace(/\s+/g, " ");
   const out: Partial<ParsedCut> = {};
   const num = t.match(/N\.?\s*º?\s*CORTE\s*:?\s*(\d+)/i);
-  if (num) out.cut_number = num[1];
+  if (num) out.cut_number = num[1]!;
   const date = t.match(/DATA\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
-  if (date) out.cut_on = `${date[3]}-${date[2]}-${date[1]}`;
+  if (date) out.cut_on = `${date[3]!}-${date[2]!}-${date[1]!}`;
   const model = t.match(/MODELO\s*:?\s*(.+?)\s+(TECIDO|TIPO|GRADE)/i);
-  if (model) out.model_label = model[1].trim();
+  if (model) out.model_label = model[1]!.trim();
   const fabric = t.match(/TECIDO\s*:?\s*(.+?)\s+(TIPO|GRADE)/i);
-  if (fabric) out.fabric = fabric[1].trim();
+  if (fabric) out.fabric = fabric[1]!.trim();
   const tot = t.match(/TOTAL DE PE[ÇC]AS CORTADAS\s*:?\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/i);
   if (tot) {
-    out.qty_p = Number(tot[1]);
-    out.qty_m = Number(tot[2]);
-    out.qty_g = Number(tot[3]);
-    out.qty_gg = Number(tot[4]);
+    out.qty_p = Number(tot[1]!);
+    out.qty_m = Number(tot[2]!);
+    out.qty_g = Number(tot[3]!);
+    out.qty_gg = Number(tot[4]!);
   }
   const color = t.match(/[\d.,]+\s+\d+\s+([A-ZÀ-Ú ]+?)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+/);
-  if (color) out.color = color[1].trim();
+  if (color) out.color = color[1]!.trim();
   return out;
 }
 
