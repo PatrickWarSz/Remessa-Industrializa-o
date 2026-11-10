@@ -36,6 +36,13 @@
       "when": 1794312142014,
       "tag": "0004_create_cuts",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794313082137,
+      "tag": "0005_deprecate_cuts",
+      "breakpoints": true
     }
   ]
 }
